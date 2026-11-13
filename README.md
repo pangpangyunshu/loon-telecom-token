@@ -57,19 +57,24 @@ https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom
 
 两者配合电脑端的注入脚本生成 `chinaTelecom_cache.json`，之后签到脚本走缓存登录。
 
+## 页面地址
+
+```
+复制页：https://appgologin.189.cn:9031/token
+诊断页：https://appgologin.189.cn:9031/diag
+```
+
+> 早期版本用的是 `http://telecom-token.local/`，**打不开是正常的**：`.local` 是 iOS 保留的
+> mDNS 后缀，系统在 DNS 阶段就处理掉了，请求进不了 Loon。现已改用 `appgologin.189.cn`
+> 承载页面——这个域名本身可达，且 MITM 已覆盖，稳定可用。
+
 ## 抓不到数据怎么排查
 
-插件内置诊断。Safari 打开：
+Safari 打开诊断页，看里面有没有 `userLoginNormal` 这条请求：
 
-```
-http://telecom-token.local/diag
-```
-
-- **页面能打开** → 插件和脚本都正常，问题在抓取是否命中。看页面里有没有
-  `userLoginNormal` 这条请求：没有则说明 App 登录走的是别的接口，把日志发给开发者。
-- **页面打不开** → 插件没生效。依次检查：插件开关是否启用、Loon 全局代理是否开启、
-  MitM 是否开启、证书是否已安装并在「证书信任设置」里被信任。
-- **有 `userLoginNormal` 但提示「响应体为空」** → 多为 `max-size` 或 requires-body 配置问题。
+- **页面能打开、有 `userLoginNormal`** → 抓取正常，只是没登录成功（122001 滑块提示会弹通知）。
+- **页面能打开、没有 `userLoginNormal`** → App 登录走的不是这个接口，或走了 QUIC，把日志发给开发者。
+- **页面打不开** → 插件未启用 / MitM 未开启 / 证书未信任。
 
 ## 说明
 

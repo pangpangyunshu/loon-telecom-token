@@ -90,6 +90,14 @@ https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom
 插件里的 `script-path` 指向 `@main`，jsDelivr 对 `@main` 有缓存（通常十几分钟到 12 小时）。
 急用就换成 `raw.githubusercontent.com` 的地址，或把 URL 里的 `@main` 换成某个具体 commit。
 
+**jsDelivr 连不上，插件装了却一直没反应？**
+本插件的 `script-path` 默认走 `cdn.jsdelivr.net`。个别网络下它不可用，表现是：插件显示已启用，
+但 App 登录后既不弹通知，诊断页也没有任何记录。这时把插件里 4 处
+`https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/`
+换成
+`https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/`
+（Loon → 配置 → 插件 → 点开插件编辑），即可。两条线路互为备份，哪条通就用哪条。
+
 **抓到了但电脑端说 token 无效？**
 token 有有效期，复制页超过 6 小时会给提示。过期就重新抓一次；不要反复用密码登录去试，
 那只会加深风控。

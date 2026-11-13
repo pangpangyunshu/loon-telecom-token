@@ -1,29 +1,33 @@
 #!name=电信营业厅 Token 抓取（含诊断）
-#!desc=抓取登录 token/userId，点击通知即可复制；抓不到时可在 /diag 查看真实请求日志
+#!desc=抓取登录 token/userId，点击通知即可复制；页面承载在 appgologin.189.cn 上，避免 .local 被系统接管
 #!author=pangpangyunshu
 #!homepage=https://github.com/pangpangyunshu/loon-telecom-token
 
+# ===== 页面地址 =====
+#   复制页：https://appgologin.189.cn:9031/token
+#   诊断页：https://appgologin.189.cn:9031/diag
+# 为什么不用 telecom-token.local：.local 是 iOS 保留的 mDNS 后缀，
+# 系统在 DNS 阶段就消化掉了，请求进不了 Loon，脚本永远不触发。
+
 # ===== 用法 =====
-# 1. Loon → 设置 → MitM：开启开关、生成证书、安装描述文件
+# 1. Loon → 设置 → MitM：开启、生成证书、安装描述文件
 # 2. iOS 设置 → 通用 → VPN与设备管理：安装描述文件
-# 3. iOS 设置 → 通用 → 关于本机 → 证书信任设置：打开 Loon 证书开关
+# 3. iOS 设置 → 通用 → 关于本机 → 证书信任设置：打开 Loon 开关
 # 4. 「电信营业厅」App 里退出登录 → 重新登录（滑块该拖就拖）
-# 5. 登录成功弹通知，点通知打开复制页，一键复制 JSON
-#
-# 抓不到数据时：
-#   Safari 打开 http://telecom-token.local/diag 查看真实请求日志
-#   页面能打开 = 插件已生效（问题在抓取匹配）
-#   页面打不开 = 插件未启用 / MITM 没开 / 脚本没下载成功
+# 5. 弹通知后点通知，或 Safari 打开上面的复制页，一键复制 JSON
 
 [MITM]
 hostname = %APPEND% appgologin.189.cn
 
 [Script]
-# 诊断：记录所有 189 请求（URL + 请求体摘要）
-http-request ^https?:\/\/[^\/]*189\.cn script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@c6e3c41b091ce24cfa2ae16893acbfa00b4ae38c/telecom-token-capture.js, requires-body=1, max-size=30000, timeout=10, tag=电信诊断请求
+# ① 本地页面（必须放在最前，优先于诊断规则）
+http-request ^https:\/\/appgologin\.189\.cn:9031\/(token|diag) script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页
 
-# 抓取：记录并解析 appgologin 的响应
-http-response ^https:\/\/appgologin\.189\.cn:9031\/ script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@c6e3c41b091ce24cfa2ae16893acbfa00b4ae38c/telecom-token-capture.js, requires-body=1, max-size=10485760, timeout=30, tag=电信抓取响应
+# ② 备用别名
+http-request ^http:\/\/telecom-token\.com\/ script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页备用
 
-# 本地页面：/ 复制页，/diag 诊断日志
-http-request ^http:\/\/telecom-token\.local\/? script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@c6e3c41b091ce24cfa2ae16893acbfa00b4ae38c/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页
+# ③ 诊断：记录所有 189 请求
+http-request ^https?:\/\/[^\/]*189\.cn script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-capture.js, requires-body=1, max-size=30000, timeout=10, tag=电信诊断请求
+
+# ④ 抓取：记录并解析 appgologin 的响应
+http-response ^https:\/\/appgologin\.189\.cn:9031\/ script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-capture.js, requires-body=1, max-size=10485760, timeout=30, tag=电信抓取响应

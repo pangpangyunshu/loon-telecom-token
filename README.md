@@ -81,7 +81,15 @@ https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom
 - **有 `userLoginNormal` 的 REQ，也有 RSP，但没有 token** → 响应里没登录结果，多半是命中了 122001；
   回 App 手动把滑块拖过去再登录。
 - **只有 REQ，没有 RSP** → 响应阶段没触发，检查 MITM 证书信任、插件里 `max-size`。
-- **完全没记录** → 插件没启用 / MITM 没开 / 证书没信任；确认 App 是真的「退出登录后重新登录」。
+- **诊断页顶部显示「✗ 抓取脚本从未被触发」** → 请求根本没进脚本，按顺序查：
+  1. 插件是否启用（Loon → 插件，开关要打开）；
+  2. MitM 开关是否打开；
+  3. 证书是否装了，且 **设置 → 通用 → 关于本机 → 证书信任设置** 里已信任；
+  4. Safari 打开 `http://ct-token.com/token` —— 这是明文入口，不需要证书；**能打开说明规则生效，打不开就是插件/规则问题**；
+  5. App 是否走了 QUIC（HTTP/3）：Loon 里把「QUIC 回退保护」打开再试一次。
+- **诊断页顶部显示「✓ 已触发过」，但没有 `userLoginNormal`** → 脚本正常，是 App 登录没走这个接口，
+  或没真的「退出登录后重新登录」；把插件里 ④ 那条「诊断足迹」前面的 `#` 去掉，再登录一次，
+  诊断页就会列出 App 实际访问的 189 接口。
 - **RSP 的 len 很小或为 0** → 响应体没读到，`requires-body=1` 与 `max-size` 要保证够大。
 
 ## 常见问题

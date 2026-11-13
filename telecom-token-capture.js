@@ -10,7 +10,7 @@
 
 const STORE_KEY = 'china_telecom_login_result';
 const DIAG_KEY = 'diag_log_v1';
-const VIEW_URL = 'http://telecom-token.local/';
+const VIEW_URL = 'https://appgologin.189.cn:9031/token';
 const MAX_LOG = 60;
 
 const isObj = v => v !== null && typeof v === 'object' && !Array.isArray(v);

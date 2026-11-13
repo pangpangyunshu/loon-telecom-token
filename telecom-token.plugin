@@ -1,0 +1,23 @@
+#!name=电信营业厅 Token 抓取
+#!desc=拦截登录响应，抓出 token 与 userId；点击通知即可打开复制页
+#!author=pangpangyunshu
+#!homepage=https://github.com/pangpangyunshu/loon-telecom-token
+
+# ===== 用法 =====
+# 1. 开启 MITM，并安装、信任 Loon 根证书（抓 HTTPS 响应体必须）
+# 2. 「电信营业厅」App 里退出登录 → 重新登录（滑块该拖就拖）
+# 3. 登录成功后弹通知，点通知打开复制页，一键复制 JSON
+# 4. 把 JSON 粘到电脑的 token.txt，跑 注入Token.py 写入缓存
+#
+# 说明：抓取端只旁路记录，不改写 App 响应。
+# 查看页走明文 http://telecom-token.local/ ，不需要证书，不会真正联网。
+
+[MITM]
+hostname = %APPEND% appgologin.189.cn
+
+[Script]
+# 抓取登录结果 → 存持久化 + 弹通知
+http-response ^https:\/\/appgologin\.189\.cn:9031\/login\/client\/userLoginNormal script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-capture.js, requires-body=1, max-size=0, timeout=30, tag=电信登录抓取
+
+# 本地复制页：Safari 打开 http://telecom-token.local/
+http-request ^http:\/\/telecom-token\.local\/? script-path=https://cdn.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信Token查看页

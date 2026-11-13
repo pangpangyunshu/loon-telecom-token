@@ -138,15 +138,35 @@ function tokenPage(rec) {
   </div>`;
 }
 
-function diagPage(list) {
+function aliveBlock(alive) {
+  if (alive && alive.ts) {
+    return `<div class="card">
+    <div class="label">脚本运行状态</div>
+    <div class="ok">✓ 抓取脚本已经被触发过</div>
+    <div class="small">最近一次：${esc(fmt(alive.ts))} · ${esc(alive.what || '')}</div>
+    <div class="small">说明插件规则和脚本都生效了，剩下只差「有没有抓到登录接口」。</div>
+  </div>`;
+  }
+  return `<div class="card">
+    <div class="label">脚本运行状态</div>
+    <div class="warn">✗ 抓取脚本从未被触发</div>
+    <div class="small">App 的请求根本没进到脚本里，按顺序查：</div>
+    <div class="small">1) 插件是否启用　2) MitM 开关是否打开</div>
+    <div class="small">3) 证书是否安装并在「证书信任设置」里信任</div>
+    <div class="small">4) App 是否走了别的域名，或用了 QUIC（HTTP/3）</div>
+  </div>`;
+}
+
+
+function diagPage(list, alive) {
+  const head = aliveBlock(alive);
   const items = Array.isArray(list) ? list.slice().reverse() : [];
   if (!items.length) {
-    return shell('诊断日志', `
+    return shell('诊断日志', `${head}
   <div class="card"><div class="empty">
-    还没有记录。<br><br>
-    1. 确认插件已启用、MitM 已开启<br>
-    2. 在 App 里退出登录并重新登录一次<br>
-    3. 回到这个页面刷新
+    还没有请求记录。<br><br>
+    1. 在 App 里退出登录并重新登录一次<br>
+    2. 回到这个页面刷新
   </div></div>`);
   }
 
@@ -156,21 +176,23 @@ function diagPage(list) {
   ).join('\n');
 
   const rows = items.map(e => e.k === 'REQ'
-    ? `<div class="drow dreq"><span class="dh">${esc(e.t)} REQ</span><br>${esc(e.u)}<br><span class="dh">phone=${esc(e.phone || '-')} · body ${esc(e.len || 0)}B</span></div>`
+    ? `<div class="drow dreq"><span class="dh">${esc(e.t)} REQ${e.login ? ' · 登录接口' : ''}</span><br>${esc(e.u)}<br><span class="dh">phone=${esc(e.phone || '-')} · body ${esc(e.len || 0)}B</span></div>`
     : `<div class="drow drsp"><span class="dh">${esc(e.t)} RSP ${esc(e.s)} · ${esc(e.len || 0)}B</span><br>${esc(e.u)}<br><span class="dh">${esc(e.b || '')}</span></div>`
   ).join('');
 
-  return shell('诊断日志', `
+  const hasLogin = items.some(e => e.login || String(e.u || '').indexOf('userLoginNormal') !== -1);
+  const tip = hasLogin
+    ? '看到了 userLoginNormal：脚本已经看到登录请求。没有 token 就看对应 RSP 的 resultCode，122001 就是滑块。'
+    : '没有 userLoginNormal：脚本在跑，但 App 登录没走这个接口，或没有真正「退出后重新登录」。';
+
+  return shell('诊断日志', `${head}
   <div class="card">
     <div class="label">最近 ${items.length} 条（新的在上）</div>
     <textarea id="raw" readonly rows="7">${esc(plain)}</textarea>
     <button class="btn primary" onclick="copyText(document.getElementById('raw').value,this)">复制全部日志</button>
   </div>
   <div class="card"><div class="label">明细</div>${rows}</div>
-  <div class="card tip">
-    只看到 REQ 没有 RSP → 登录没走到响应（可能命中 122001 前就断了，或 MITM 没覆盖到响应）；
-    有 RSP 但 len 很小 → 响应体没读到，检查插件 max-size。
-  </div>`);
+  <div class="card tip">${esc(tip)}</div>`);
 }
 
 function main() {
@@ -184,7 +206,12 @@ function main() {
       const s = $persistentStore.read(KEY_DIAG);
       list = s ? JSON.parse(s) : [];
     } catch (e) { list = []; }
-    body = diagPage(list);
+    let alive = null;
+    try {
+      const a = $persistentStore.read('ct_alive');
+      if (a) alive = JSON.parse(a);
+    } catch (e) { alive = null; }
+    body = diagPage(list, alive);
   } else {
     let rec = null;
     try {

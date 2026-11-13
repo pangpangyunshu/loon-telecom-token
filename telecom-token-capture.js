@@ -117,18 +117,23 @@ function isLoginUrl(url) {
 
 function onRequest() {
   const url = ($request && $request.url) || '';
-  if (!isLoginUrl(url)) return $done({});
-
+  const isLogin = isLoginUrl(url);
   const body = ($request && $request.body) || '';
-  const phone = phoneFromRequestBody(body);
-  if (phone) {
-    storeWrite(phone, KEY_PHONE);
-    console.log('[抓取] 登录请求手机号 ' + masked(phone));
-  } else {
-    console.log('[抓取] 请求体里没解析到手机号（body 长度 ' + String(body).length + '）');
+  // 心跳：只要脚本被触发就记一笔，诊断页靠它判断「脚本活着没有」
+  storeWrite(JSON.stringify({ ts: Date.now(), what: 'REQ ' + short(url, 100) }), 'ct_alive');
+
+  let phone = '';
+  if (isLogin) {
+    phone = phoneFromRequestBody(body);
+    if (phone) {
+      storeWrite(phone, KEY_PHONE);
+      console.log('[抓取] 登录请求手机号 ' + masked(phone));
+    } else {
+      console.log('[抓取] 登录请求里没解析到手机号（body 长度 ' + String(body).length + '）');
+    }
   }
   pushDiag({
-    t: clock(), k: 'REQ', u: short(url, 200),
+    t: clock(), k: 'REQ', u: short(url, 200), login: isLogin,
     phone: masked(phone), len: String(body).length,
   });
   return $done({});
@@ -138,7 +143,15 @@ function onRequest() {
 
 function onResponse() {
   const url = ($response && $response.url) || ($request && $request.url) || '';
-  if (!isLoginUrl(url)) return $done({});
+  storeWrite(JSON.stringify({ ts: Date.now(), what: 'RSP ' + short(url, 100) }), 'ct_alive');
+  if (!isLoginUrl(url)) {
+    // 非登录接口：只留一条足迹，证明脚本确实被触发过
+    pushDiag({
+      t: clock(), k: 'RSP', u: short(url, 200), s: ($response && $response.status) || 0,
+      len: String(($response && $response.body) || '').length, b: '',
+    });
+    return $done({});
+  }
 
   const rawBody = ($response && $response.body) || '';
   const text = String(rawBody).replace(/^\uFEFF/, '').trim();

@@ -21,13 +21,13 @@ hostname = %APPEND% appgologin.189.cn
 
 [Script]
 # ① 本地页面（必须放在最前，优先于诊断规则）
-http-request ^https:\/\/appgologin\.189\.cn:9031\/(token|diag) script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页
+http-request ^https:\/\/appgologin\.189\.cn:9031\/(token|diag) script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@db38fc2067171048993ed9bd119ab4a7cb15bb55/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页
 
 # ② 备用别名
-http-request ^http:\/\/telecom-token\.com\/ script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页备用
+http-request ^http:\/\/telecom-token\.com\/ script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@db38fc2067171048993ed9bd119ab4a7cb15bb55/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页备用
 
 # ③ 诊断：记录所有 189 请求
-http-request ^https?:\/\/[^\/]*189\.cn script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-capture.js, requires-body=1, max-size=30000, timeout=10, tag=电信诊断请求
+http-request ^https?:\/\/[^\/]*189\.cn script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@db38fc2067171048993ed9bd119ab4a7cb15bb55/telecom-token-capture.js, requires-body=1, max-size=30000, timeout=10, tag=电信诊断请求
 
 # ④ 抓取：记录并解析 appgologin 的响应
-http-response ^https:\/\/appgologin\.189\.cn:9031\/ script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@main/telecom-token-capture.js, requires-body=1, max-size=10485760, timeout=30, tag=电信抓取响应
+http-response ^https:\/\/appgologin\.189\.cn:9031\/ script-path=https://fastly.jsdelivr.net/gh/pangpangyunshu/loon-telecom-token@db38fc2067171048993ed9bd119ab4a7cb15bb55/telecom-token-capture.js, requires-body=1, max-size=10485760, timeout=30, tag=电信抓取响应

@@ -1,0 +1,44 @@
+#!name=电信营业厅 Token 抓取（raw 版）
+#!desc=raw 直连，不受 CDN 缓存影响；重新登录一次即抓取 token/userId（含手机号），点通知一键复制 JSON；诊断页顶部能看出脚本到底有没有被触发
+#!author=pangpangyunshu
+#!homepage=https://github.com/pangpangyunshu/loon-telecom-token
+#!icon=square.and.arrow.down.on.square
+
+# ================== 装好之后怎么用 ==================
+# 1. Loon → 设置 → MitM：打开开关、生成证书
+# 2. 下载的证书要在 iOS「设置 → 通用 → VPN与设备管理」里安装
+# 3. iOS「设置 → 通用 → 关于本机 → 证书信任设置」里把 Loon 的开关打开
+# 4. 打开「电信营业厅」App → 我的 → 退出登录 → 重新登录（滑块该拖就拖）
+# 5. 登录成功后弹「电信 Token 已抓取 ✓」，点通知打开复制页
+# 6. 复制页点「一键复制 JSON」，存成电脑上的 token.txt（面板用户填进环境变量 CT_TOKEN）
+#
+# 三个入口（抓不到时按顺序试）：
+#   复制页   https://appgologin.189.cn:9031/token   需要 MITM 生效
+#   诊断页   https://appgologin.189.cn:9031/diag    需要 MITM 生效
+#   明文页   http://ct-token.com/token              不需要证书，能打开就说明插件规则本身生效了
+#
+# 抓不到先看诊断页顶部「脚本运行状态」：
+#   ✓ 已触发过 → 插件、脚本、MITM 都正常，问题在 App 有没有走 userLoginNormal
+#   ✗ 从未触发 → MitM 证书没信任 / 9031 没被解密 / App 走了 QUIC，见 README 排查章节
+#
+# 说明：页面挂在 appgologin.189.cn 上而不是 xxx.local —— .local 是 iOS 保留的
+# mDNS 后缀，系统在 DNS 阶段就拦截了，请求永远进不了 Loon。
+
+[MITM]
+hostname = %APPEND% appgologin.189.cn
+
+[Script]
+# ① 请求阶段：从登录请求体里还原手机号（电信是「每字符 +2」混淆），顺便记一次心跳
+http-request ^https:\/\/appgologin\.189\.cn:9031\/login\/client\/userLoginNormal script-path=https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom-token-capture.js, requires-body=1, max-size=1048576, timeout=10, tag=电信登录请求
+
+# ② 响应阶段：解析 loginSuccessResult，取 token / userId，存起来并弹通知
+http-response ^https:\/\/appgologin\.189\.cn:9031\/login\/client\/userLoginNormal script-path=https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom-token-capture.js, requires-body=1, max-size=10485760, timeout=30, tag=电信登录响应
+
+# ③ 复制页 / 诊断页（本地生成 HTML，不真正联网）
+http-request ^https:\/\/appgologin\.189\.cn:9031\/(token|diag|push) script-path=https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信查看页
+
+# ③b 明文入口：http 不需要证书。能打开 → 插件规则+脚本下载都正常；打不开 → 问题在插件/MitM 开关
+http-request ^http:\/\/ct-token\.com\/(token|diag|push) script-path=https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom-token-viewer.js, requires-body=0, max-size=0, timeout=10, tag=电信明文查看页
+
+# ④ 可选：想看 App 到底在访问哪些 189 接口，把下面这行前面的 # 去掉（会与 ① 重复记一条，不影响功能）
+# http-request ^https?:\/\/[^\/]*189\.cn script-path=https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom-token-capture.js, requires-body=0, max-size=0, timeout=10, tag=电信诊断足迹

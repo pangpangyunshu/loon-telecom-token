@@ -142,9 +142,18 @@ function diagPage(list) {
   return shell('诊断日志', inner);
 }
 
+function isPanel(url) {
+  // 走已验证可达、且 MITM 已覆盖的域名，避免 .local 被 iOS 的 mDNS 劫持
+  if (url.indexOf('appgologin.189.cn:9031/token') !== -1) return true;
+  if (url.indexOf('appgologin.189.cn:9031/diag') !== -1) return true;
+  // 备用别名
+  if (url.indexOf('telecom-token.com') !== -1) return true;
+  return false;
+}
+
 function main() {
   const url = (typeof $request !== 'undefined' && $request.url) || '';
-  if (url && url.indexOf('telecom-token.local') === -1) return $done({});
+  if (url && !isPanel(url)) return $done({});
 
   const wantDiag = url.indexOf('/diag') !== -1;
   let body;

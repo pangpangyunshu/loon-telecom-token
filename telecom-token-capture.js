@@ -14,6 +14,7 @@
 const KEY_RESULT = 'ct_login_result_v2';   // 抓到的登录态
 const KEY_DIAG = 'ct_diag_v1';             // 诊断日志
 const KEY_PHONE = 'ct_last_phone';         // 请求阶段解析出的手机号
+const KEY_PUSH = 'ct_push';                // 调试推送地址（局域网接收端），用 /push?url= 设置
 const VIEW_URL = 'https://appgologin.189.cn:9031/token';
 const DIAG_URL = 'https://appgologin.189.cn:9031/diag';
 const LOGIN_PATH = '/login/client/userLoginNormal';
@@ -115,6 +116,25 @@ function isLoginUrl(url) {
 
 /* ---------- 请求阶段：只为拿手机号 ---------- */
 
+// 调试推送：把诊断数据 POST 到局域网里的接收端（地址用 /push?url=... 设置）
+function pushRemote(kind, payload) {
+  let url = '';
+  try { url = String(storeRead('ct_push') || '').trim(); } catch (e) { url = ''; }
+  if (!url) return;
+  try {
+    $httpClient.post({
+      url: url,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kind: kind, ts: Date.now(), payload: payload }),
+    }, function (err, resp) {
+      console.log('[推送] ' + kind + (err ? (' 失败 ' + err) : (' -> ' + (resp && resp.status))));
+    });
+  } catch (e) {
+    console.log('[推送] 异常 ' + e);
+  }
+}
+
+
 function onRequest() {
   const url = ($request && $request.url) || '';
   const isLogin = isLoginUrl(url);
@@ -135,6 +155,11 @@ function onRequest() {
   pushDiag({
     t: clock(), k: 'REQ', u: short(url, 200), login: isLogin,
     phone: masked(phone), len: String(body).length,
+  });
+  pushRemote('request', {
+    url: short(url, 200), isLogin: isLogin, phone: masked(phone),
+    bodyLen: String(body).length,
+    preview: short(String(body).replace(/\s+/g, ' '), 300),
   });
   return $done({});
 }
@@ -162,6 +187,10 @@ function onResponse() {
     len: text.length, b: short(text.replace(/\s+/g, ' '), 300),
   });
 
+  pushRemote('response', {
+    url: short(url, 200), status: status, len: text.length,
+    preview: short(text.replace(/\s+/g, ' '), 400),
+  });
   if (!text) {
     console.log('[抓取] 响应体为空：检查插件里 requires-body=1 与 max-size');
     $notification.post('电信抓取失败', '响应体为空', '检查插件 max-size / MITM 是否生效');
@@ -203,6 +232,10 @@ function onResponse() {
     }
   }
 
+  pushRemote('result', {
+    phone: masked(phone), userId: short(String(result.userId), 12),
+    tokenLen: String(result.token).length, tokenHead: String(result.token).slice(0, 6),
+  });
   storeWrite(JSON.stringify({
     ts: Date.now(),
     phone: phone,

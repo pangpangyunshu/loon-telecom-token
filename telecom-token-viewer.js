@@ -197,9 +197,40 @@ function diagPage(list, alive) {
 
 function main() {
   const url = (typeof $request !== 'undefined' && $request.url) || '';
-  if (url.indexOf('/token') === -1 && url.indexOf('/diag') === -1) return $done({});
+  const isPush = url.indexOf('/push') !== -1;
+  if (!isPush && url.indexOf('/token') === -1 && url.indexOf('/diag') === -1) return $done({});
 
   let body;
+  if (url.indexOf('/push') !== -1) {
+    const m = url.match(/[?&]url=([^&]*)/);
+    const target = m ? decodeURIComponent(m[1]) : '';
+    if (!target) {
+      let cur = '';
+      try { cur = String($persistentStore.read('ct_push') || ''); } catch (e) { cur = ''; }
+      body = shell('调试推送设置', `
+  <div class="card">
+    <div class="label">当前推送地址</div>
+    <div class="mono value">${esc(cur || '（未设置）')}</div>
+  </div>
+  <div class="card tip">
+    <b>怎么设置</b><br>
+    1. 电脑上运行调试接收端，记下它打印的那行地址；<br>
+    2. 手机 Safari 打开下面格式的网址：<br>
+    <span class="mono">http://ct-token.com/push?url=http://电脑IP:8899/</span><br>
+    3. 回 App 退出登录 → 重新登录，数据就会实时发到电脑上。
+  </div>`);
+    } else {
+      try { $persistentStore.write(target, 'ct_push'); } catch (e) {}
+      body = shell('调试推送已设置', `
+  <div class="card">
+    <div class="ok">✓ 已保存推送地址</div>
+    <div class="mono value">${esc(target)}</div>
+    <div class="small">现在去 App 里退出登录 → 重新登录，电脑上的接收端会逐条打印。</div>
+  </div>
+  <div class="card tip">清空：打开 <span class="mono">/push?url=</span> 重新设置，或卸载插件。</div>`);
+    }
+    return $done({ status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }, body: body });
+  }
   if (url.indexOf('/diag') !== -1) {
     let list = [];
     try {

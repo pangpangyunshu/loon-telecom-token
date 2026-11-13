@@ -74,6 +74,32 @@ https://raw.githubusercontent.com/pangpangyunshu/loon-telecom-token/main/telecom
 > 系统在 DNS 阶段就处理掉了，请求进不了 Loon。所以页面改挂在 `appgologin.189.cn` 上
 > —— 这个域名本身可达，且 MITM 已覆盖。
 
+## 局域网调试（把手机上的数据实时发到电脑）
+
+Loon 没有对外开放的调试 API，但可以让插件把诊断数据 POST 到局域网内的电脑，电脑上边跑边看：
+
+1. 电脑上运行接收端（PowerShell，不用装 Python/Node）：
+
+   ```
+   powershell -ExecutionPolicy Bypass -File .\Loon调试接收端.ps1
+   ```
+
+   启动后会打印一行类似：
+
+   ```
+   http://ct-token.com/push?url=http://192.168.1.10:8899/
+   ```
+
+2. 手机 Safari 打开这行地址，页面提示「已保存推送地址」。
+
+3. 回 App 退出登录 → 重新登录。
+
+4. 电脑终端会逐条打印 `request` / `response` / `result` / `blocked`，同时写进同目录的 `loon-debug.jsonl`。
+
+推送内容已脱敏：手机号打码，token 只发前 6 位和长度，不会把完整登录态落盘。
+
+> 接收端脚本在另一个仓库 `telecom-task-tools`（私有）：`Loon调试接收端.ps1`。
+
 ## 抓不到怎么排查
 
 先看诊断页：
